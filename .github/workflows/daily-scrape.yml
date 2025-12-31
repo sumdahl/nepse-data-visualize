@@ -1,25 +1,19 @@
 name: Daily Scrape NEPSE Data
-
 on:
   schedule:
-    - cron: "0 0 * * *"
+    - cron: "15 11 * * *"
   workflow_dispatch:
-
 jobs:
   scrape:
-    runs-on: ubuntu-latest
-
+    runs-on: ubuntu-22.04
     env:
       PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: true
-      PUPPETEER_EXECUTABLE_PATH: /usr/bin/google-chrome
-
+      PUPPETEER_EXECUTABLE_PATH: /usr/bin/chromium-browser
     steps:
       - uses: actions/checkout@v4
-
       - uses: oven-sh/setup-bun@v1
         with:
           bun-version: latest
-
       - name: Cache Bun dependencies
         uses: actions/cache@v4
         with:
@@ -29,30 +23,10 @@ jobs:
           key: ${{ runner.os }}-bun-${{ hashFiles('bun.lockb') }}
           restore-keys: |
             ${{ runner.os }}-bun-
-
-      - name: Install minimal Puppeteer deps
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            ca-certificates \
-            fonts-liberation \
-            libasound2 \
-            libatk-bridge2.0-0 \
-            libatk1.0-0 \
-            libcups2 \
-            libdrm2 \
-            libgbm1 \
-            libgtk-3-0 \
-            libnss3 \
-            libx11-6 \
-            libxcomposite1 \
-            libxdamage1 \
-            libxrandr2 \
-            xdg-utils
-
+      - name: Install Chromium
+        run: sudo apt-get update && sudo apt-get install -y chromium-browser
       - name: Install dependencies
         run: bun install --frozen-lockfile
-
       - name: Run scraper
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
