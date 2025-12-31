@@ -1,84 +1,95 @@
-name: Daily NEPSE Data Scrape
+steps:
+  - name: Checkout repository
+    uses: actions/checkout@v4
+  
+  - name: Setup Bun
+    uses: oven-sh/setup-bun@v1
+    with:
+      bun-version: latest
+  
+  - name: Install system dependencies for Puppeteer
+    run: |
+      sudo apt-get update
 
-on:
-  schedule:
-    # Run daily at 5:00 PM Nepal Time (NPT = UTC+5:45)
-    # 5:00 PM NPT = 11:15 AM UTC
-    - cron: '15 11 * * *'
-  workflow_dispatch: # Allow manual trigger from GitHub UI
+      # detect correct libasound package for this runner
+      if apt-cache show libasound2 >/dev/null 2>&1; then
+        ASOUND_PKG=libasound2
+      elif apt-cache show libasound2t64 >/dev/null 2>&1; then
+        ASOUND_PKG=libasound2t64
+      else
+        ASOUND_PKG=""
+      fi
 
-jobs:
-  scrape:
-    runs-on: ubuntu-latest
-    timeout-minutes: 30 # Set timeout to prevent hanging
-    
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-      
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v1
-        with:
-          bun-version: latest
-      
-      - name: Install system dependencies for Puppeteer
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            ca-certificates \
-            fonts-liberation \
-            libappindicator3-1 \
-            libasound2 \
-            libatk-bridge2.0-0 \
-            libatk1.0-0 \
-            libc6 \
-            libcairo2 \
-            libcups2 \
-            libdbus-1-3 \
-            libexpat1 \
-            libfontconfig1 \
-            libgbm1 \
-            libgcc1 \
-            libglib2.0-0 \
-            libgtk-3-0 \
-            libnspr4 \
-            libnss3 \
-            libpango-1.0-0 \
-            libpangocairo-1.0-0 \
-            libstdc++6 \
-            libx11-6 \
-            libx11-xcb1 \
-            libxcb1 \
-            libxcomposite1 \
-            libxcursor1 \
-            libxdamage1 \
-            libxext6 \
-            libxfixes3 \
-            libxi6 \
-            libxrandr2 \
-            libxrender1 \
-            libxss1 \
-            libxtst6 \
-            lsb-release \
-            wget \
-            xdg-utils
-      
-      - name: Install dependencies
-        run: bun install
-      
-      - name: Run scraper
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        run: bun run src/scripts/scrape.ts
-      
-      - name: Notify on success
-        if: success()
-        run: |
-          echo "✅ Scraping completed successfully at $(date)"
-      
-      - name: Notify on failure
-        if: failure()
-        run: |
-          echo "❌ Scraping failed at $(date)"
-          exit 1
+      PKGS=(
+        ca-certificates
+        fonts-liberation
+        libappindicator3-1
+        $ASOUND_PKG
+        libatk-bridge2.0-0
+        libatk1.0-0
+        libc6
+        libcairo2
+        libcups2
+        libdbus-1-3
+        libexpat1
+        libfontconfig1
+        libgbm1
+        libgcc1
+        libglib2.0-0
+        libgtk-3-0
+        libnspr4
+        libnss3
+        libpango-1.0-0
+        libpangocairo-1.0-0
+        libstdc++6
+        libx11-6
+        libx11-xcb1
+        libxcb1
+        libxcomposite1
+        libxcursor1
+        libxdamage1
+        libxext6
+        libxfixes3
+        libxi6
+        libxrandr2
+        libxrender1
+        libxss1
+        libxtst6
+        lsb-release
+        wget
+        xdg-utils
+      )
 
+      # build install list (skip empty entries)
+      INSTALL_LIST=()
+      for p in "${PKGS[@]}"; do
+        if [ -n "$p" ]; then
+          INSTALL_LIST+=("$p")
+        fi
+      done
+
+      if [ ${#INSTALL_LIST[@]} -eq 0 ]; then
+        echo "No packages to install, aborting."
+        exit 1
+      fi
+
+      sudo apt-get install -y --no-install-recommends "${INSTALL_LIST[@]}"
+  
+  - name: Install dependencies
+    run: bun install
+  
+  - name: Run scraper
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+    run: bun run src/scripts/scrape.ts
+  
+  - name: Notify on success
+    if: success()
+    run: |
+      echo "✅ Scraping completed successfully at $(date)"
+  
+  - name: Notify on failure
+    if: failure()
+    run: |
+      echo "❌ Scraping failed at $(date)"
+      exit 1
