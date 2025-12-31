@@ -11,9 +11,11 @@ jobs:
       PUPPETEER_EXECUTABLE_PATH: /usr/bin/chromium-browser
     steps:
       - uses: actions/checkout@v4
+      
       - uses: oven-sh/setup-bun@v1
         with:
           bun-version: latest
+      
       - name: Cache Bun dependencies
         uses: actions/cache@v4
         with:
@@ -23,11 +25,34 @@ jobs:
           key: ${{ runner.os }}-bun-${{ hashFiles('bun.lockb') }}
           restore-keys: |
             ${{ runner.os }}-bun-
+      
       - name: Install Chromium
-        run: sudo apt-get update && sudo apt-get install -y chromium-browser
+        run: |
+          echo "📦 Installing Chromium..."
+          sudo apt-get update
+          sudo apt-get install -y chromium-browser
+          echo "✅ Chromium installed"
+          chromium-browser --version
+      
       - name: Install dependencies
-        run: bun install --frozen-lockfile
+        run: |
+          echo "📦 Installing dependencies..."
+          bun install --frozen-lockfile
+          echo "✅ Dependencies installed"
+      
       - name: Run scraper
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        run: bun run src/scripts/scrape.ts
+        run: |
+          echo "🚀 Starting NEPSE scraper..."
+          echo "⏰ Run time: $(date '+%Y-%m-%d %H:%M:%S %Z')"
+          bun run src/scripts/scrape.ts
+          echo "✅ Scraper completed successfully!"
+      
+      - name: Job summary
+        if: always()
+        run: |
+          echo "## 📊 Scrape Job Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- **Time:** $(date '+%Y-%m-%d %H:%M:%S %Z')" >> $GITHUB_STEP_SUMMARY
+          echo "- **Status:** ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Runner:** ${{ runner.os }}" >> $GITHUB_STEP_SUMMARY
