@@ -1,95 +1,59 @@
-steps:
-  - name: Checkout repository
-    uses: actions/checkout@v4
-  
-  - name: Setup Bun
-    uses: oven-sh/setup-bun@v1
-    with:
-      bun-version: latest
-  
-  - name: Install system dependencies for Puppeteer
-    run: |
-      sudo apt-get update
+name: Daily Scrape NEPSE Data
 
-      # detect correct libasound package for this runner
-      if apt-cache show libasound2 >/dev/null 2>&1; then
-        ASOUND_PKG=libasound2
-      elif apt-cache show libasound2t64 >/dev/null 2>&1; then
-        ASOUND_PKG=libasound2t64
-      else
-        ASOUND_PKG=""
-      fi
+on:
+  schedule:
+    - cron: "0 0 * * *"
+  workflow_dispatch:
 
-      PKGS=(
-        ca-certificates
-        fonts-liberation
-        libappindicator3-1
-        $ASOUND_PKG
-        libatk-bridge2.0-0
-        libatk1.0-0
-        libc6
-        libcairo2
-        libcups2
-        libdbus-1-3
-        libexpat1
-        libfontconfig1
-        libgbm1
-        libgcc1
-        libglib2.0-0
-        libgtk-3-0
-        libnspr4
-        libnss3
-        libpango-1.0-0
-        libpangocairo-1.0-0
-        libstdc++6
-        libx11-6
-        libx11-xcb1
-        libxcb1
-        libxcomposite1
-        libxcursor1
-        libxdamage1
-        libxext6
-        libxfixes3
-        libxi6
-        libxrandr2
-        libxrender1
-        libxss1
-        libxtst6
-        lsb-release
-        wget
-        xdg-utils
-      )
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
 
-      # build install list (skip empty entries)
-      INSTALL_LIST=()
-      for p in "${PKGS[@]}"; do
-        if [ -n "$p" ]; then
-          INSTALL_LIST+=("$p")
-        fi
-      done
-
-      if [ ${#INSTALL_LIST[@]} -eq 0 ]; then
-        echo "No packages to install, aborting."
-        exit 1
-      fi
-
-      sudo apt-get install -y --no-install-recommends "${INSTALL_LIST[@]}"
-  
-  - name: Install dependencies
-    run: bun install
-  
-  - name: Run scraper
     env:
-      DATABASE_URL: ${{ secrets.DATABASE_URL }}
-    run: bun run src/scripts/scrape.ts
-  
-  - name: Notify on success
-    if: success()
-    run: |
-      echo "✅ Scraping completed successfully at $(date)"
-  
-  - name: Notify on failure
-    if: failure()
-    run: |
-      echo "❌ Scraping failed at $(date)"
-      exit 1
+      PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: true
+      PUPPETEER_EXECUTABLE_PATH: /usr/bin/google-chrome
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Cache Bun dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.bun
+            node_modules
+          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lockb') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
+
+      - name: Install minimal Puppeteer deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            ca-certificates \
+            fonts-liberation \
+            libasound2 \
+            libatk-bridge2.0-0 \
+            libatk1.0-0 \
+            libcups2 \
+            libdrm2 \
+            libgbm1 \
+            libgtk-3-0 \
+            libnss3 \
+            libx11-6 \
+            libxcomposite1 \
+            libxdamage1 \
+            libxrandr2 \
+            xdg-utils
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Run scraper
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: bun run src/scripts/scrape.ts
