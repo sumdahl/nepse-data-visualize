@@ -62,7 +62,13 @@ async function getAnalysisData() {
       })
       .from(tradingSignals)
       .where(sql`rsi_14 IS NOT NULL`)
-      .groupBy(sql`rsiRange`)
+      .groupBy(sql`CASE 
+          WHEN rsi_14 < 30 THEN 'Oversold (<30)'
+          WHEN rsi_14 BETWEEN 30 AND 50 THEN 'Bearish (30-50)'
+          WHEN rsi_14 BETWEEN 50 AND 70 THEN 'Bullish (50-70)'
+          WHEN rsi_14 > 70 THEN 'Overbought (>70)'
+          ELSE 'Unknown'
+        END`)
       .orderBy(desc(sql<number>`count(*)`)),
   ]);
 

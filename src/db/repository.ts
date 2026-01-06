@@ -14,6 +14,7 @@ const sql = postgres(config.database.connectionString, {
   max: 1, // Use single connection for serverless
   idle_timeout: 20,
   connect_timeout: 10,
+  ssl: 'require',
 });
 
 export class TradingSignalRepository {

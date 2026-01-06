@@ -37,11 +37,12 @@ async function getSectors() {
 export default async function SignalsPage({
   searchParams,
 }: {
-  searchParams: { sector?: string; search?: string };
+  searchParams: Promise<{ sector?: string; search?: string }>;
 }) {
+  const { sector, search } = await searchParams;
   const signals = await getSignals({
-    sector: searchParams.sector,
-    search: searchParams.search,
+    sector,
+    search,
   });
   const sectors = await getSectors();
 
