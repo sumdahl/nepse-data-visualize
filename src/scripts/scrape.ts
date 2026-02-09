@@ -12,7 +12,7 @@
  * Or via GitHub Actions: scheduled daily at 5 PM Nepal Time
  */
 
-import puppeteer from 'puppeteer';
+import puppeteer, { Page } from 'puppeteer';
 import { config } from '../config/index.js';
 import { transformRawData } from '../utils/transform.js';
 import { TradingSignal } from '../types/index.js';
@@ -104,17 +104,17 @@ class NepseScraper {
     }
   }
 
-  private async scrapeHeaders(page: puppeteer.Page): Promise<string[]> {
+  private async scrapeHeaders(page: Page): Promise<string[]> {
     try {
       let headers = await page.$$eval(
         `${config.scraper.tableSelector} thead th`,
-        ths => ths.map(th => th.innerText.trim())
+        ths => ths.map(th => (th as any).innerText.trim())
       );
 
       if (headers.length === 0) {
         headers = await page.$$eval(
           `${config.scraper.tableSelector} tr:first-child td`,
-          tds => tds.map(td => td.innerText.trim())
+          tds => tds.map(td => (td as any).innerText.trim())
         );
       }
 
@@ -141,7 +141,7 @@ class NepseScraper {
     console.log(`   ✓ Determined special column indices (iTag: ${this.iTagTitleColumnIndices.length}, td: ${this.tdTitleColumnIndices.length})`);
   }
 
-  private async scrapePageData(page: puppeteer.Page): Promise<string[][]> {
+  private async scrapePageData(page: Page): Promise<string[][]> {
     return await page.$$eval(
       `${config.scraper.tableSelector} tbody tr`,
       (rows, iTagIndices, tdIndices) => {
@@ -149,7 +149,7 @@ class NepseScraper {
         for (const row of rows) {
           const rowData: string[] = [];
           row.querySelectorAll('td').forEach((cell, cellIndex) => {
-            let cellValue = cell.innerText.trim();
+            let cellValue = (cell as any).innerText.trim();
 
             if (iTagIndices.includes(cellIndex)) {
               const iTag = cell.querySelector('i');
@@ -176,7 +176,7 @@ class NepseScraper {
     );
   }
 
-  private async navigateToNextPage(page: puppeteer.Page, currentPage: number): Promise<boolean> {
+  private async navigateToNextPage(page: Page, currentPage: number): Promise<boolean> {
     const nextButton = await page.$(config.scraper.nextButtonSelector);
 
     if (!nextButton) {
@@ -188,7 +188,7 @@ class NepseScraper {
       await page.waitForSelector(config.scraper.firstDataCellSelector, { timeout: 5000 });
       oldFirstCellText = await page.$eval(
         config.scraper.firstDataCellSelector,
-        el => el.innerText.trim()
+        el => (el as any).innerText.trim()
       );
     } catch (e) {
       oldFirstCellText = "____NO_OLD_TEXT____";
@@ -200,7 +200,7 @@ class NepseScraper {
       await page.waitForFunction(
         (selector, oldText) => {
           const el = document.querySelector(selector);
-          return el && el.innerText.trim() !== oldText;
+          return el && (el as any).innerText.trim() !== oldText;
         },
         { timeout: 45000 },
         config.scraper.firstDataCellSelector,

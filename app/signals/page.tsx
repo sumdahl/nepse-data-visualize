@@ -1,49 +1,18 @@
-import { db } from "@/lib/db";
-import { tradingSignals } from "@/lib/db/schema";
-import { desc, sql, like, or } from "drizzle-orm";
 import { Suspense } from "react";
 import { SignalsTable } from "@/components/signals-table";
 import { SignalsFilters } from "@/components/signals-filters";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-
-async function getSignals(filters?: { sector?: string; search?: string }) {
-  let query = db.select().from(tradingSignals);
-
-  if (filters?.sector) {
-    query = query.where(like(tradingSignals.sector, `%${filters.sector}%`)) as any;
-  }
-
-  if (filters?.search) {
-    query = query.where(
-      or(
-        like(tradingSignals.symbol, `%${filters.search}%`),
-        like(tradingSignals.sector, `%${filters.search}%`)
-      )!
-    ) as any;
-  }
-
-  return await query.orderBy(desc(tradingSignals.scrapedAt), tradingSignals.symbol).limit(500);
-}
-
-async function getSectors() {
-  const sectors = await db
-    .selectDistinct({ sector: tradingSignals.sector })
-    .from(tradingSignals)
-    .where(sql`sector IS NOT NULL`);
-
-  return sectors.map((s) => s.sector).filter(Boolean) as string[];
-}
+import { signalsService } from "@/services/signals-service";
 
 export default async function SignalsPage({
   searchParams,
 }: {
-  searchParams: { sector?: string; search?: string };
+  searchParams: Promise<{ sector?: string; search?: string }>;
 }) {
-  const signals = await getSignals({
-    sector: searchParams.sector,
-    search: searchParams.search,
-  });
-  const sectors = await getSectors();
+  const { sector, search } = await searchParams;
+  const signals = await signalsService.getSignals({ sector, search });
+  const sectors = await signalsService.getSectorList();
+  const stats = await signalsService.getSignalStats(signals);
 
   return (
     <div className="min-h-screen bg-background">
@@ -69,7 +38,7 @@ export default async function SignalsPage({
               <CardTitle className="text-sm font-medium">Total Signals</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{signals.length}</div>
+              <div className="text-2xl font-bold">{stats.total}</div>
             </CardContent>
           </Card>
           <Card>
@@ -77,9 +46,7 @@ export default async function SignalsPage({
               <CardTitle className="text-sm font-medium">Unique Symbols</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">
-                {new Set(signals.map((s) => s.symbol)).size}
-              </div>
+              <div className="text-2xl font-bold">{stats.uniqueSymbols}</div>
             </CardContent>
           </Card>
           <Card>
@@ -87,9 +54,7 @@ export default async function SignalsPage({
               <CardTitle className="text-sm font-medium">Sectors</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">
-                {new Set(signals.map((s) => s.sector)).size}
-              </div>
+              <div className="text-2xl font-bold">{stats.uniqueSectors}</div>
             </CardContent>
           </Card>
           <Card>
@@ -98,8 +63,8 @@ export default async function SignalsPage({
             </CardHeader>
             <CardContent>
               <div className="text-sm font-medium">
-                {signals[0]?.scrapedAt
-                  ? new Date(signals[0].scrapedAt).toLocaleString()
+                {stats.latestUpdate
+                  ? new Date(stats.latestUpdate).toLocaleString()
                   : "N/A"}
               </div>
             </CardContent>

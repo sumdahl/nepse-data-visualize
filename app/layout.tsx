@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import { Navbar } from "@/components/navbar";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "NEPSE Trading Signals Dashboard",
-  description: "Real-time trading signals and analysis for Nepal Stock Exchange",
+  description:
+    "Real-time trading signals and analysis for Nepal Stock Exchange",
 };
 
 export default function RootLayout({
@@ -17,6 +19,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className} suppressHydrationWarning>
+        <Navbar />
         {children}
       </body>
     </html>
