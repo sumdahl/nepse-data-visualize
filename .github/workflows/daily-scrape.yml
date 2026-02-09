@@ -26,16 +26,6 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-bun-
       
-      - name: Install Google Chrome and Xvfb
-        run: |
-          echo "📦 Installing Google Chrome and Xvfb..."
-          wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
-          sudo sh -c 'echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google-chrome.list'
-          sudo apt-get update
-          sudo apt-get install -y google-chrome-stable xvfb
-          echo "✅ Google Chrome and Xvfb installed"
-          google-chrome --version
-
       - name: Install dependencies
         run: |
           echo "📦 Installing dependencies..."
