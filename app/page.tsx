@@ -30,21 +30,7 @@ import { SectorChart } from "@/components/charts/sector-chart";
 import { TechnicalSummaryChart } from "@/components/charts/technical-summary-chart";
 import { RiskDistributionChart } from "@/components/charts/risk-distribution-chart";
 import { statsService } from "@/services/stats-service";
-
-function getSummaryColor(summary: string | null) {
-  if (!summary) return "secondary";
-  if (summary.includes("Strong Bullish")) return "default"; // Green-ish usually
-  if (summary.includes("Bullish")) return "secondary";
-  if (summary.includes("Bearish")) return "destructive";
-  return "outline";
-}
-
-function getRiskColor(risk: string | null) {
-  if (!risk) return "secondary";
-  if (risk.includes("High")) return "destructive";
-  if (risk.includes("Medium")) return "default"; // or warning color if available
-  return "secondary";
-}
+import { getSummaryColor, getRiskColor } from "@/lib/utils/badge-helpers";
 
 export default async function Home() {
   const stats = await statsService.getDashboardStats();

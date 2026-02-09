@@ -14,29 +14,11 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { ArrowUpRight, ArrowDownRight, TrendingUp, TrendingDown } from "lucide-react";
 import type { TradingSignal } from "@/lib/db/schema";
+import { getSummaryColor, getRiskColor } from "@/lib/utils/badge-helpers";
+import { parseGain } from "@/lib/utils/data-formatters";
 
 interface SignalsTableProps {
   signals: TradingSignal[];
-}
-
-function getSummaryColor(summary: string | null) {
-  if (!summary) return "secondary";
-  if (summary.includes("Strong Bullish")) return "default";
-  if (summary.includes("Bullish")) return "secondary";
-  if (summary.includes("Bearish")) return "destructive";
-  return "outline";
-}
-
-function getRiskColor(risk: string | null) {
-  if (!risk) return "secondary";
-  if (risk.includes("High")) return "destructive";
-  if (risk.includes("Medium")) return "default";
-  return "secondary";
-}
-
-function parseGain(gain: string | null): number {
-  if (!gain) return 0;
-  return parseFloat(gain.replace("%", "")) || 0;
 }
 
 export function SignalsTable({ signals }: SignalsTableProps) {

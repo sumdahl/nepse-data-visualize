@@ -1,103 +1,14 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { db } from "@/lib/db";
-import { tradingSignals } from "@/lib/db/schema";
-import { sql, desc } from "drizzle-orm";
 import Link from "next/link";
 import { SectorChart } from "@/components/charts/sector-chart";
 import { TechnicalSummaryChart } from "@/components/charts/technical-summary-chart";
 import { RiskDistributionChart } from "@/components/charts/risk-distribution-chart";
-
-async function getAnalysisData() {
-  const [sectorStats, summaryStats, riskStats, topGainers, topLosers, rsiDistribution] = await Promise.all([
-    db
-      .select({
-        sector: tradingSignals.sector,
-        count: sql<number>`count(*)`,
-        avgLtp: sql<number>`avg(cast(ltp as numeric))`,
-        avgGain: sql<number>`avg(cast(replace(daily_gain, '%', '') as numeric))`,
-      })
-      .from(tradingSignals)
-      .groupBy(tradingSignals.sector)
-      .orderBy(desc(sql<number>`count(*)`)),
-    db
-      .select({
-        summary: tradingSignals.technicalSummary,
-        count: sql<number>`count(*)`,
-      })
-      .from(tradingSignals)
-      .groupBy(tradingSignals.technicalSummary)
-      .orderBy(desc(sql<number>`count(*)`)),
-    db
-      .select({
-        risk: tradingSignals.technicalEntryRisk,
-        count: sql<number>`count(*)`,
-      })
-      .from(tradingSignals)
-      .groupBy(tradingSignals.technicalEntryRisk)
-      .orderBy(desc(sql<number>`count(*)`)),
-    db
-      .select()
-      .from(tradingSignals)
-      .where(sql`cast(replace(daily_gain, '%', '') as numeric) > 0`)
-      .orderBy(desc(sql`cast(replace(daily_gain, '%', '') as numeric)`))
-      .limit(10),
-    db
-      .select()
-      .from(tradingSignals)
-      .where(sql`cast(replace(daily_gain, '%', '') as numeric) < 0`)
-      .orderBy(sql`cast(replace(daily_gain, '%', '') as numeric)`)
-      .limit(10),
-    db
-      .select({
-        rsiRange: sql<string>`CASE 
-          WHEN rsi_14 < 30 THEN 'Oversold (<30)'
-          WHEN rsi_14 BETWEEN 30 AND 50 THEN 'Bearish (30-50)'
-          WHEN rsi_14 BETWEEN 50 AND 70 THEN 'Bullish (50-70)'
-          WHEN rsi_14 > 70 THEN 'Overbought (>70)'
-          ELSE 'Unknown'
-        END`,
-        count: sql<number>`count(*)`,
-      })
-      .from(tradingSignals)
-      .where(sql`rsi_14 IS NOT NULL`)
-      .groupBy(sql`CASE 
-          WHEN rsi_14 < 30 THEN 'Oversold (<30)'
-          WHEN rsi_14 BETWEEN 30 AND 50 THEN 'Bearish (30-50)'
-          WHEN rsi_14 BETWEEN 50 AND 70 THEN 'Bullish (50-70)'
-          WHEN rsi_14 > 70 THEN 'Overbought (>70)'
-          ELSE 'Unknown'
-        END`)
-      .orderBy(desc(sql<number>`count(*)`)),
-  ]);
-
-  return {
-    sectors: sectorStats.map((s) => ({
-      sector: s.sector || "Unknown",
-      count: Number(s.count),
-      avgLtp: Number(s.avgLtp || 0),
-      avgGain: Number(s.avgGain || 0),
-    })),
-    summaries: summaryStats.map((s) => ({
-      summary: s.summary || "Unknown",
-      count: Number(s.count),
-    })),
-    risks: riskStats.map((r) => ({
-      risk: r.risk || "Unknown",
-      count: Number(r.count),
-    })),
-    topGainers,
-    topLosers,
-    rsiDistribution: rsiDistribution.map((r) => ({
-      range: r.rsiRange,
-      count: Number(r.count),
-    })),
-  };
-}
+import { statsService } from "@/services/stats-service";
 
 export default async function AnalysisPage() {
-  const data = await getAnalysisData();
+  const data = await statsService.getAnalysisData();
 
   return (
     <div className="min-h-screen bg-background">

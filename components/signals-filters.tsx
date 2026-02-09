@@ -44,7 +44,7 @@ export function SignalsFilters({ sectors }: SignalsFiltersProps) {
             <SelectTrigger className="w-[200px]">
               <SelectValue placeholder="All Sectors" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="bg-blue-500"> 
               <SelectItem value="all">All Sectors</SelectItem>
               {sectors.map((s) => (
                 <SelectItem key={s} value={s}>
