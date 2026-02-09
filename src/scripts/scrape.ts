@@ -97,8 +97,19 @@ class NepseScraper {
       await page.waitForSelector(config.scraper.paginationContainerSelector, { timeout: 30000 });
       console.log('   ✓ Pagination loaded');
       
-      // Small delay to ensure DataTables is fully initialized
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Optimization: Change "Show entries" to 100 to reduce number of pages
+      console.log('⚡ Optimizing: Setting table to show 100 entries per page...');
+      await page.evaluate(() => {
+        const select = document.querySelector('select[name$="_length"]') as HTMLSelectElement;
+        if (select) {
+          select.value = '100';
+          select.dispatchEvent(new Event('change'));
+        }
+      });
+      
+      // Wait for the table to refresh (ensure at least 11 rows are present or a reliable indicator)
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      console.log('   ✓ Table updated to 100 entries');
 
       console.log('✅ Table loaded. Scraping headers...');
       headers = await this.scrapeHeaders(page);
