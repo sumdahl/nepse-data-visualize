@@ -12,7 +12,8 @@
  * Or via GitHub Actions: scheduled daily at 5 PM Nepal Time
  */
 
-import puppeteer, { Page } from 'puppeteer';
+import { connect } from 'puppeteer-real-browser';
+import { Page, Browser } from 'puppeteer-core';
 import { config } from '../config/index.js';
 import { transformRawData } from '../utils/transform.js';
 import { TradingSignal } from '../types/index.js';
@@ -26,26 +27,50 @@ class NepseScraper {
     console.log('🚀 Starting NEPSE data scrape...');
     console.log(`📍 Target URL: ${config.scraper.url}`);
     
-    const browser = await puppeteer.launch({
-      headless: true,
+    console.log('🌐 Launching real browser to bypass Cloudflare...');
+    
+    let executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
+    
+    if (!executablePath) {
+      if (process.platform === 'darwin') {
+        const bravePath = '/Applications/Brave Browser.app/Contents/MacOS/Brave Browser';
+        const chromePath = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
+        
+        if (await Bun.file(bravePath).exists()) {
+          executablePath = bravePath;
+        } else if (await Bun.file(chromePath).exists()) {
+          executablePath = chromePath;
+        }
+      } else if (process.platform === 'linux') {
+        executablePath = '/usr/bin/google-chrome'; // Default for GitHub Actions
+      }
+    }
+
+    console.log(`📂 Using browser at: ${executablePath || 'default system path'}`);
+
+    const { browser, page } = await connect({
+      headless: false, // Must be false to pass Turnstile? User suggested false or 'new'
+      turnstile: true,
       args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
-        '--disable-gpu',
-        '--disable-dev-shm-usage',
         '--disable-web-security',
-        '--disable-features=IsolateOrigins,site-per-process'
-      ]
-    });
+        '--disable-features=IsolateOrigins,site-per-process',
+        '--window-size=1920,1080'
+      ],
+      customConfig: executablePath ? {
+        chromePath: executablePath
+      } : {},
+      connectOption: {
+        defaultViewport: null
+      }
+    }) as any as { browser: Browser, page: Page };
 
     const allDataRows: string[][] = [];
     let headers: string[] = [];
 
     try {
-      const page = await browser.newPage();
-      await page.setUserAgent(
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-      );
+      // Page is already created by connect()
       await page.setViewport({ width: 1366, height: 768 });
 
       console.log('📡 Navigating to target page...');
@@ -55,9 +80,25 @@ class NepseScraper {
       });
 
       console.log('⏳ Waiting for table to load...');
-      await page.waitForSelector(config.scraper.tableSelector, { timeout: 90000 });
+      
+      // Wait for the DataTables wrapper to appear first
+      await page.waitForSelector('#funda-table_wrapper', { timeout: 30000 });
+      console.log('   ✓ DataTables wrapper loaded');
+      
+      // Wait for the actual table with data
+      await page.waitForSelector(config.scraper.tableSelector, { timeout: 60000 });
+      console.log('   ✓ Table element loaded');
+      
+      // Wait for tbody with actual data rows (this ensures DataTables has initialized)
+      await page.waitForSelector('#funda-table tbody tr', { timeout: 60000 });
+      console.log('   ✓ Table data loaded');
+      
+      // Wait for pagination to ensure everything is ready
       await page.waitForSelector(config.scraper.paginationContainerSelector, { timeout: 30000 });
-      await page.waitForSelector(config.scraper.firstDataCellSelector, { timeout: 30000 });
+      console.log('   ✓ Pagination loaded');
+      
+      // Small delay to ensure DataTables is fully initialized
+      await new Promise(resolve => setTimeout(resolve, 2000));
 
       console.log('✅ Table loaded. Scraping headers...');
       headers = await this.scrapeHeaders(page);

@@ -26,14 +26,16 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-bun-
       
-      - name: Install Chromium
+      - name: Install Google Chrome and Xvfb
         run: |
-          echo "📦 Installing Chromium..."
+          echo "📦 Installing Google Chrome and Xvfb..."
+          wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
+          sudo sh -c 'echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google-chrome.list'
           sudo apt-get update
-          sudo apt-get install -y chromium-browser
-          echo "✅ Chromium installed"
-          chromium-browser --version
-      
+          sudo apt-get install -y google-chrome-stable xvfb
+          echo "✅ Google Chrome and Xvfb installed"
+          google-chrome --version
+
       - name: Install dependencies
         run: |
           echo "📦 Installing dependencies..."
@@ -43,10 +45,11 @@ jobs:
       - name: Run scraper
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          PUPPETEER_EXECUTABLE_PATH: /usr/bin/google-chrome
         run: |
-          echo "🚀 Starting NEPSE scraper..."
+          echo "🚀 Starting NEPSE scraper with Xvfb..."
           echo "⏰ Run time: $(date '+%Y-%m-%d %H:%M:%S %Z')"
-          bun run src/scripts/scrape.ts
+          xvfb-run --auto-servernum --server-args="-screen 0 1920x1080x24" bun run src/scripts/scrape.ts
           echo "✅ Scraper completed successfully!"
       
       - name: Job summary
