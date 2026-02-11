@@ -1,4 +1,4 @@
-import { pgTable, serial, varchar, decimal, timestamp, index, unique, integer, text } from "drizzle-orm/pg-core";
+import { pgTable, serial, varchar, decimal, timestamp, index, unique, integer, text, date } from "drizzle-orm/pg-core";
 
 export const scrapeRuns = pgTable(
   "scrape_runs",
@@ -46,14 +46,17 @@ export const tradingSignals = pgTable(
     volumeTrend: varchar("volume_trend", { length: 50 }),
     beta3Month: decimal("beta_3_month", { precision: 10, scale: 2 }),
     scrapedAt: timestamp("scraped_at").defaultNow().notNull(),
+    scrapeDate: date("scrape_date").notNull(),
   },
   (table) => ({
     scrapeRunIdx: index("idx_scrape_run_id").on(table.scrapeRunId),
     symbolIdx: index("idx_symbol").on(table.symbol),
     scrapedAtIdx: index("idx_scraped_at").on(table.scrapedAt),
+    scrapeDateIdx: index("idx_scrape_date").on(table.scrapeDate),
     sectorIdx: index("idx_sector").on(table.sector),
     uniqueSymbolScrapeRun: unique("unique_symbol_scrape_run").on(table.symbol, table.scrapeRunId),
     uniqueSymbolScrapedAt: unique("unique_symbol_scraped_at").on(table.symbol, table.scrapedAt),
+    uniqueSymbolScrapeDate: unique("unique_symbol_scrape_date").on(table.symbol, table.scrapeDate),
   })
 );
 
