@@ -8,6 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "scrape": "bun run src/scripts/scrape.ts",
+    "db:storage": "bun run src/scripts/storage-report.ts",
+    "db:apply": "bun run src/scripts/apply-migration.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit push",
     "db:studio": "drizzle-kit studio"

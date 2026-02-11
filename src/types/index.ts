@@ -24,6 +24,7 @@ export interface TradingSignal {
   volumeTrend: string;
   beta3Month: number;
   scrapedAt?: Date;
+  scrapeDate?: string;
 }
 
 export interface DatabaseSignal {
@@ -53,5 +54,5 @@ export interface DatabaseSignal {
   volume_trend: string;
   beta_3_month: number;
   scraped_at: Date;
+  scrape_date: string;
 }
-

@@ -46,6 +46,8 @@ export function transformRawData(rawData: Record<string, string>): TradingSignal
  * Converts TradingSignal to DatabaseSignal format
  */
 export function toDatabaseFormat(signal: TradingSignal): Omit<DatabaseSignal, "id"> {
+  const scrapedAt = signal.scrapedAt || new Date();
+  const scrapeDate = signal.scrapeDate || scrapedAt.toISOString().slice(0, 10);
   return {
     symbol: signal.symbol,
     technical_summary: signal.technicalSummary,
@@ -71,7 +73,7 @@ export function toDatabaseFormat(signal: TradingSignal): Omit<DatabaseSignal, "i
     sma_50_200: signal.sma50_200,
     volume_trend: signal.volumeTrend,
     beta_3_month: signal.beta3Month,
-    scraped_at: signal.scrapedAt || new Date()
+    scraped_at: scrapedAt,
+    scrape_date: scrapeDate
   };
 }
-

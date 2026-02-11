@@ -79,9 +79,6 @@ export class TradingSignalRepository {
     console.log(`Upserting ${signals.length} signals...`);
     console.log(`Database target: ${maskDatabaseUrl(config.database.connectionString)}`);
 
-    console.log("Replacing existing trading_signals with fresh scrape data...");
-    await sql`DELETE FROM trading_signals`;
-
     // Process in batches to avoid overwhelming the database
     const batchSize = 50;
     let successCount = 0;
@@ -101,7 +98,7 @@ export class TradingSignalRepository {
               daily_volatility, price_relative, trend_3m, rsi_14, macd_vs_signal_line,
               percent_b, mfi_14, sto_14, cci_14, stoch_rsi, sma_10, price_above_20_sma,
               price_above_50_sma, price_above_200_sma, sma_5_above_20_sma, sma_50_200,
-              volume_trend, beta_3_month, scraped_at, scrape_run_id
+              volume_trend, beta_3_month, scraped_at, scrape_date, scrape_run_id
             ) VALUES (
               ${dbSignal.symbol}, ${dbSignal.technical_summary}, ${dbSignal.technical_entry_risk},
               ${dbSignal.sector}, ${dbSignal.daily_gain}, ${dbSignal.ltp}, ${dbSignal.daily_volatility},
@@ -110,9 +107,10 @@ export class TradingSignalRepository {
               ${dbSignal.stoch_rsi}, ${dbSignal.sma_10}, ${dbSignal.price_above_20_sma},
               ${dbSignal.price_above_50_sma}, ${dbSignal.price_above_200_sma}, ${dbSignal.sma_5_above_20_sma},
               ${dbSignal.sma_50_200}, ${dbSignal.volume_trend}, ${dbSignal.beta_3_month}, ${dbSignal.scraped_at},
+              ${dbSignal.scrape_date},
               ${scrapeRunId}
             )
-            ON CONFLICT (symbol, scrape_run_id) DO UPDATE SET
+            ON CONFLICT (symbol, scrape_date) DO UPDATE SET
               technical_summary = EXCLUDED.technical_summary,
               technical_entry_risk = EXCLUDED.technical_entry_risk,
               sector = EXCLUDED.sector,
@@ -136,7 +134,8 @@ export class TradingSignalRepository {
               sma_50_200 = EXCLUDED.sma_50_200,
               volume_trend = EXCLUDED.volume_trend,
               beta_3_month = EXCLUDED.beta_3_month,
-              scraped_at = EXCLUDED.scraped_at
+              scraped_at = EXCLUDED.scraped_at,
+              scrape_run_id = EXCLUDED.scrape_run_id
           `;
           successCount += 1;
         } catch (error) {
@@ -188,17 +187,10 @@ export class TradingSignalRepository {
    */
   async getSignalsForDate(date: string): Promise<TradingSignal[]> {
     const results = await sql<DatabaseSignal[]>`
-      WITH run AS (
-        SELECT id
-        FROM scrape_runs
-        WHERE scraped_at::date = ${date}::date
-        ORDER BY scraped_at DESC
-        LIMIT 1
-      )
-      SELECT ts.*
-      FROM trading_signals ts
-      JOIN run r ON ts.scrape_run_id = r.id
-      ORDER BY ts.symbol ASC
+      SELECT *
+      FROM trading_signals
+      WHERE scrape_date = ${date}::date
+      ORDER BY symbol ASC
     `;
     return results.map(this.fromDatabaseFormat);
   }
@@ -232,7 +224,8 @@ export class TradingSignalRepository {
       sma50_200: dbSignal.sma_50_200,
       volumeTrend: dbSignal.volume_trend,
       beta3Month: dbSignal.beta_3_month,
-      scrapedAt: dbSignal.scraped_at
+      scrapedAt: dbSignal.scraped_at,
+      scrapeDate: dbSignal.scrape_date
     };
   }
 }

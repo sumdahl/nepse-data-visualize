@@ -318,6 +318,13 @@ async function main() {
       throw new Error('No signals were scraped');
     }
 
+    const runScrapedAt = new Date();
+    const runDate = runScrapedAt.toISOString().slice(0, 10);
+    for (const signal of signals) {
+      signal.scrapedAt = runScrapedAt;
+      signal.scrapeDate = runDate;
+    }
+
     // Debug: persist scraped data locally
     await writeFile('scraped_data.json', JSON.stringify(signals, null, 2), 'utf8');
     console.log('Wrote scraped data to scraped_data.json');
@@ -335,8 +342,6 @@ async function main() {
 
     // Save to database
     console.log('\nSaving to database...');
-    const runScrapedAt = signals[0]?.scrapedAt || new Date();
-    const runDate = runScrapedAt.toISOString().slice(0, 10);
     const alreadyUpdatedToday = await repository.hasSuccessfulRunForDate(runDate);
     if (alreadyUpdatedToday) {
       console.log(`Skipping DB update: already updated on ${runDate}`);
