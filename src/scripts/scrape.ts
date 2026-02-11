@@ -339,7 +339,7 @@ async function main() {
     const runDate = runScrapedAt.toISOString().slice(0, 10);
     const alreadyUpdatedToday = await repository.hasSuccessfulRunForDate(runDate);
     if (alreadyUpdatedToday) {
-      console.log(`⏭️  Skipping DB update: already updated on ${runDate}`);
+      console.log(`Skipping DB update: already updated on ${runDate}`);
       return;
     }
 
