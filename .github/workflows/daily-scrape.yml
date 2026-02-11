@@ -1,7 +1,7 @@
 name: Daily Scrape NEPSE Data
 on:
   schedule:
-    - cron: "15 11 * * *"
+    - cron: "15 11 * * 0-4"
   workflow_dispatch:
 jobs:
   scrape:
@@ -28,24 +28,24 @@ jobs:
       
       - name: Install dependencies
         run: |
-          echo "📦 Installing dependencies..."
+          echo "Installing dependencies..."
           bun install --frozen-lockfile
-          echo "✅ Dependencies installed"
+          echo "Dependencies installed"
       
       - name: Run scraper
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           PUPPETEER_EXECUTABLE_PATH: /usr/bin/google-chrome
         run: |
-          echo "🚀 Starting NEPSE scraper with Xvfb..."
-          echo "⏰ Run time: $(date '+%Y-%m-%d %H:%M:%S %Z')"
+          echo "Starting NEPSE scraper with Xvfb..."
+          echo "Run time: $(date '+%Y-%m-%d %H:%M:%S %Z')"
           xvfb-run --auto-servernum --server-args="-screen 0 1920x1080x24" bun run src/scripts/scrape.ts
-          echo "✅ Scraper completed successfully!"
+          echo "Scraper completed successfully!"
       
       - name: Job summary
         if: always()
         run: |
-          echo "## 📊 Scrape Job Summary" >> $GITHUB_STEP_SUMMARY
+          echo "## Scrape Job Summary" >> $GITHUB_STEP_SUMMARY
           echo "- **Time:** $(date '+%Y-%m-%d %H:%M:%S %Z')" >> $GITHUB_STEP_SUMMARY
           echo "- **Status:** ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Runner:** ${{ runner.os }}" >> $GITHUB_STEP_SUMMARY
