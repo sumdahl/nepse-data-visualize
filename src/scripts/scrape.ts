@@ -18,16 +18,17 @@ import { config } from '../config/index.js';
 import { transformRawData } from '../utils/transform.js';
 import { TradingSignal } from '../types/index.js';
 import { TradingSignalRepository } from '../db/repository.js';
+import { writeFile } from 'node:fs/promises';
 
 class NepseScraper {
   private iTagTitleColumnIndices: number[] = [];
   private tdTitleColumnIndices: number[] = [];
 
   async scrape(): Promise<TradingSignal[]> {
-    console.log('🚀 Starting NEPSE data scrape...');
-    console.log(`📍 Target URL: ${config.scraper.url}`);
+    console.log('Starting NEPSE data scrape...');
+    console.log(`Target URL: ${config.scraper.url}`);
     
-    console.log('🌐 Launching real browser to bypass Cloudflare...');
+    console.log('Launching real browser to bypass Cloudflare...');
     
     let executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
     
@@ -46,7 +47,7 @@ class NepseScraper {
       }
     }
 
-    console.log(`📂 Using browser at: ${executablePath || 'default system path'}`);
+    console.log(`Using browser at: ${executablePath || 'default system path'}`);
 
     const { browser, page } = await connect({
       headless: false, // Must be false to pass Turnstile? User suggested false or 'new'
@@ -73,7 +74,7 @@ class NepseScraper {
       // Page is already created by connect()
       await page.setViewport({ width: 1366, height: 768 });
 
-      console.log('📡 Navigating to target page...');
+      console.log('Navigating to target page...');
       await page.goto(config.scraper.url, {
         waitUntil: 'domcontentloaded',
         timeout: 60000
@@ -122,7 +123,7 @@ class NepseScraper {
 
       let currentPage = 1;
       while (true) {
-        console.log(`📄 Processing page ${currentPage}...`);
+        console.log(`Processing page ${currentPage}...`);
 
         const currentPageData = await this.scrapePageData(page);
         allDataRows.push(...currentPageData);
@@ -130,7 +131,7 @@ class NepseScraper {
 
         const hasNextPage = await this.navigateToNextPage(page, currentPage);
         if (!hasNextPage) {
-          console.log('📑 Reached last page');
+          console.log('Reached last page');
           break;
         }
 
@@ -152,7 +153,7 @@ class NepseScraper {
       throw error;
     } finally {
       await browser.close();
-      console.log('🔒 Browser closed');
+      console.log('Browser closed');
     }
   }
 
@@ -296,8 +297,8 @@ async function main() {
   
   try {
     console.log('='.repeat(60));
-    console.log('🌐 NEPSE Trading Signals Scraper');
-    console.log(`🕐 Started at: ${new Date().toISOString()}`);
+    console.log('NEPSE Trading Signals Scraper');
+    console.log(`Started at: ${new Date().toISOString()}`);
     console.log('='.repeat(60));
     console.log('');
 
@@ -317,16 +318,63 @@ async function main() {
       throw new Error('No signals were scraped');
     }
 
+    // Debug: persist scraped data locally
+    await writeFile('scraped_data.json', JSON.stringify(signals, null, 2), 'utf8');
+    console.log('Wrote scraped data to scraped_data.json');
+
+    const scrapedAtValues = signals
+      .map(s => s.scrapedAt)
+      .filter((d): d is Date => d instanceof Date);
+    if (scrapedAtValues.length > 0) {
+      const minScrapedAt = new Date(Math.min(...scrapedAtValues.map(d => d.getTime())));
+      const maxScrapedAt = new Date(Math.max(...scrapedAtValues.map(d => d.getTime())));
+      console.log(`   • scrapedAt range: ${minScrapedAt.toISOString()} -> ${maxScrapedAt.toISOString()}`);
+    } else {
+      console.log('   • scrapedAt range: unavailable (no valid Date values)');
+    }
+
     // Save to database
-    console.log('\n💾 Saving to database...');
-    await repository.upsertSignals(signals);
+    console.log('\nSaving to database...');
+    const runScrapedAt = signals[0]?.scrapedAt || new Date();
+    const runDate = runScrapedAt.toISOString().slice(0, 10);
+    const alreadyUpdatedToday = await repository.hasSuccessfulRunForDate(runDate);
+    if (alreadyUpdatedToday) {
+      console.log(`Skipping DB update: already updated on ${runDate}`);
+      return;
+    }
+
+    const scrapeRunId = await repository.createScrapeRun({
+      scrapedAt: runScrapedAt,
+      sourceUrl: config.scraper.url,
+      status: "started",
+    });
+
+    const runDurationMs = Date.now() - startTime;
+    try {
+      await repository.upsertSignals(signals, scrapeRunId);
+      await repository.finishScrapeRun({
+        id: scrapeRunId,
+        status: "success",
+        rowCount: signals.length,
+        durationMs: runDurationMs,
+      });
+    } catch (e) {
+      await repository.finishScrapeRun({
+        id: scrapeRunId,
+        status: "failed",
+        rowCount: 0,
+        durationMs: runDurationMs,
+        error: e instanceof Error ? e.message : String(e),
+      });
+      throw e;
+    }
     console.log(`✅ Successfully saved ${signals.length} signals to database`);
 
     // Calculate statistics
     const sectors = new Set(signals.map(s => s.sector));
     const summaries = new Set(signals.map(s => s.technicalSummary));
     
-    console.log('\n📊 Scrape Statistics:');
+    console.log('\nScrape Statistics:');
     console.log(`   • Total Signals: ${signals.length}`);
     console.log(`   • Unique Sectors: ${sectors.size}`);
     console.log(`   • Technical Summaries: ${summaries.size}`);
@@ -356,4 +404,3 @@ async function main() {
 if (import.meta.main) {
   main();
 }
-
