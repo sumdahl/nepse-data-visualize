@@ -322,14 +322,6 @@ async function main() {
     await writeFile('scraped_data.json', JSON.stringify(signals, null, 2), 'utf8');
     console.log('Wrote scraped data to scraped_data.json');
 
-    // Debug: log sample data and scraped_at range
-    const sampleCount = Math.min(3, signals.length);
-    console.log('\nSample scraped signals:');
-    for (let i = 0; i < sampleCount; i++) {
-      const s = signals[i];
-      console.log(`   • ${s.symbol} | scrapedAt=${s.scrapedAt ? s.scrapedAt.toISOString() : 'null'} | sector=${s.sector} | dailyGain=${s.dailyGain}`);
-    }
-
     const scrapedAtValues = signals
       .map(s => s.scrapedAt)
       .filter((d): d is Date => d instanceof Date);
