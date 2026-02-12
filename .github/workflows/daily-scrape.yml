@@ -11,11 +11,11 @@ jobs:
       PUPPETEER_EXECUTABLE_PATH: /usr/bin/chromium-browser
     steps:
       - uses: actions/checkout@v4
-      
+
       - uses: oven-sh/setup-bun@v1
         with:
           bun-version: latest
-      
+
       - name: Cache Bun dependencies
         uses: actions/cache@v4
         with:
@@ -25,13 +25,22 @@ jobs:
           key: ${{ runner.os }}-bun-${{ hashFiles('bun.lockb') }}
           restore-keys: |
             ${{ runner.os }}-bun-
-      
+
+      - name: Install Google Chrome and Xvfb
+        run: |
+          echo "Installing Google Chrome and Xvfb..."
+          wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
+          sudo sh -c 'echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google-chrome.list'
+          sudo apt-get update
+          sudo apt-get install -y google-chrome-stable xvfb
+          google-chrome --version
+
       - name: Install dependencies
         run: |
           echo "Installing dependencies..."
           bun install --frozen-lockfile
           echo "Dependencies installed"
-      
+
       - name: Run scraper
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
@@ -74,7 +83,7 @@ jobs:
 
           git commit -m "Add NEPSE scrape for ${DATE_NPT}"
           git push
-      
+
       - name: Job summary
         if: always()
         run: |
