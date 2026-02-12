@@ -41,6 +41,37 @@ jobs:
           echo "Run time: $(date '+%Y-%m-%d %H:%M:%S %Z')"
           xvfb-run --auto-servernum --server-args="-screen 0 1920x1080x24" bun run src/scripts/scrape.ts
           echo "Scraper completed successfully!"
+
+      - name: Push daily data to data repo
+        env:
+          DATA_REPO_TOKEN: ${{ secrets.DATA_REPO_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${DATA_REPO_TOKEN}" ]; then
+            echo "DATA_REPO_TOKEN is not set. Skipping data repo push."
+            exit 0
+          fi
+
+          DATE_NPT="$(TZ=Asia/Kathmandu date +%F)"
+          DATA_REPO="sumdahl/nepse-data-visualize"
+          TMP_DIR="$(mktemp -d)"
+
+          git clone "https://x-access-token:${DATA_REPO_TOKEN}@github.com/${DATA_REPO}.git" "${TMP_DIR}"
+          mkdir -p "${TMP_DIR}/data"
+          cp scraped_data.json "${TMP_DIR}/data/${DATE_NPT}.json"
+
+          cd "${TMP_DIR}"
+          git config user.name "nepse-scrape-bot"
+          git config user.email "nepse-scrape-bot@users.noreply.github.com"
+
+          if git diff --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+
+          git add "data/${DATE_NPT}.json"
+          git commit -m "Add NEPSE scrape for ${DATE_NPT}"
+          git push
       
       - name: Job summary
         if: always()
