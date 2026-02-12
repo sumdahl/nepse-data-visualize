@@ -58,18 +58,20 @@ jobs:
 
           git clone "https://x-access-token:${DATA_REPO_TOKEN}@github.com/${DATA_REPO}.git" "${TMP_DIR}"
           mkdir -p "${TMP_DIR}/data"
+          ls -l scraped_data.json
           cp scraped_data.json "${TMP_DIR}/data/${DATE_NPT}.json"
 
           cd "${TMP_DIR}"
           git config user.name "nepse-scrape-bot"
           git config user.email "nepse-scrape-bot@users.noreply.github.com"
 
-          if git diff --quiet; then
+          # Force-add in case data/ or *.json is ignored in the data repo.
+          git add -f "data/${DATE_NPT}.json"
+          if git diff --cached --quiet; then
             echo "No changes to commit."
             exit 0
           fi
 
-          git add "data/${DATE_NPT}.json"
           git commit -m "Add NEPSE scrape for ${DATE_NPT}"
           git push
       
