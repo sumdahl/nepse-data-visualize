@@ -19,6 +19,7 @@ import { config } from "../config/index.js";
 import { transformRawData } from "../utils/transform.js";
 import { TradingSignal } from "../types/index.js";
 import { TradingSignalRepository } from "../db/repository.js";
+import { writeFile } from "node:fs/promises";
 
 class NepseScraper {
   private iTagTitleColumnIndices: number[] = [];
@@ -347,6 +348,10 @@ async function main() {
       signal.scrapedAt = runScrapedAt;
       signal.scrapeDate = runDate;
     }
+
+    // Write scraped data to JSON file (for GitHub Actions workflow)
+    await writeFile('scraped_data.json', JSON.stringify(signals, null, 2), 'utf8');
+    console.log('   • Wrote scraped data to scraped_data.json');
 
     const scrapedAtValues = signals
       .map((s) => s.scrapedAt)
