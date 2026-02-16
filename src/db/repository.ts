@@ -72,6 +72,9 @@ export class TradingSignalRepository {
 
   /**
    * Insert or update trading signals
+   * Architecture: 
+   * - trading_signals: Only latest data (one row per symbol)
+   * - trading_signals_history: All historical records for trend analysis
    */
   async upsertSignals(signals: TradingSignal[], scrapeRunId: number): Promise<void> {
     if (signals.length === 0) return;
@@ -84,6 +87,7 @@ export class TradingSignalRepository {
     let successCount = 0;
     let failureCount = 0;
     let firstError: unknown = null;
+    
     for (let i = 0; i < signals.length; i += batchSize) {
       const batch = signals.slice(i, i + batchSize);
       console.log(`   Processing batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(signals.length / batchSize)}...`);
@@ -92,6 +96,29 @@ export class TradingSignalRepository {
         const dbSignal = toDatabaseFormat(signal);
         
         try {
+          // Step 1: Archive existing data to history table before updating
+          await sql`
+            INSERT INTO trading_signals_history (
+              scrape_run_id, symbol, technical_summary, technical_entry_risk, sector,
+              daily_gain, ltp, daily_volatility, price_relative, trend_3m,
+              rsi_14, macd_vs_signal_line, percent_b, mfi_14, sto_14,
+              cci_14, stoch_rsi, sma_10, price_above_20_sma, price_above_50_sma,
+              price_above_200_sma, sma_5_above_20_sma, sma_50_200, volume_trend,
+              beta_3_month, scraped_at, scrape_date
+            )
+            SELECT 
+              scrape_run_id, symbol, technical_summary, technical_entry_risk, sector,
+              daily_gain, ltp, daily_volatility, price_relative, trend_3m,
+              rsi_14, macd_vs_signal_line, percent_b, mfi_14, sto_14,
+              cci_14, stoch_rsi, sma_10, price_above_20_sma, price_above_50_sma,
+              price_above_200_sma, sma_5_above_20_sma, sma_50_200, volume_trend,
+              beta_3_month, scraped_at, scrape_date
+            FROM trading_signals
+            WHERE symbol = ${dbSignal.symbol}
+            ON CONFLICT DO NOTHING
+          `;
+          
+          // Step 2: Upsert current data (only latest per symbol)
           await sql`
             INSERT INTO trading_signals (
               symbol, technical_summary, technical_entry_risk, sector, daily_gain, ltp,
@@ -110,7 +137,7 @@ export class TradingSignalRepository {
               ${dbSignal.scrape_date},
               ${scrapeRunId}
             )
-            ON CONFLICT (symbol, scrape_date) DO UPDATE SET
+            ON CONFLICT (symbol) DO UPDATE SET
               technical_summary = EXCLUDED.technical_summary,
               technical_entry_risk = EXCLUDED.technical_entry_risk,
               sector = EXCLUDED.sector,
@@ -135,6 +162,7 @@ export class TradingSignalRepository {
               volume_trend = EXCLUDED.volume_trend,
               beta_3_month = EXCLUDED.beta_3_month,
               scraped_at = EXCLUDED.scraped_at,
+              scrape_date = EXCLUDED.scrape_date,
               scrape_run_id = EXCLUDED.scrape_run_id
           `;
           successCount += 1;
@@ -193,6 +221,51 @@ export class TradingSignalRepository {
       ORDER BY symbol ASC
     `;
     return results.map(this.fromDatabaseFormat);
+  }
+
+  /**
+   * Get price history for a specific symbol
+   */
+  async getPriceHistory(symbol: string, limit: number = 30): Promise<{ date: string; ltp: number; dailyGain: string }[]> {
+    const results = await sql`
+      SELECT 
+        scrape_date as date,
+        ltp,
+        daily_gain as "dailyGain"
+      FROM trading_signals_history
+      WHERE symbol = ${symbol}
+      ORDER BY scrape_date DESC
+      LIMIT ${limit}
+    `;
+    return results.map(r => ({
+      date: r.date.toISOString().slice(0, 10),
+      ltp: parseFloat(r.ltp),
+      dailyGain: r.dailyGain
+    }));
+  }
+
+  /**
+   * Get all historical data for a specific date
+   */
+  async getHistoricalSignalsForDate(date: string): Promise<TradingSignal[]> {
+    const results = await sql<DatabaseSignal[]>`
+      SELECT * FROM trading_signals_history
+      WHERE scrape_date = ${date}::date
+      ORDER BY symbol ASC
+    `;
+    return results.map(this.fromDatabaseFormat);
+  }
+
+  /**
+   * Get available dates in history
+   */
+  async getAvailableDates(): Promise<string[]> {
+    const results = await sql<{ date: Date }[]>`
+      SELECT DISTINCT scrape_date as date
+      FROM trading_signals_history
+      ORDER BY scrape_date DESC
+    `;
+    return results.map(r => r.date.toISOString().slice(0, 10));
   }
 
   /**
