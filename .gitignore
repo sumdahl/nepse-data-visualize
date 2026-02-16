@@ -41,3 +41,6 @@ next-env.d.ts
 # bun
 bun.lockb
 
+# scraped data (generated fresh on each run)
+scraped_data.json
+

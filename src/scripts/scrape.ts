@@ -14,6 +14,7 @@
 
 import { connect } from "puppeteer-real-browser";
 import { Page, Browser } from "puppeteer-core";
+import { join } from "path";
 import { config } from "../config/index.js";
 import { transformRawData } from "../utils/transform.js";
 import { TradingSignal } from "../types/index.js";
@@ -123,7 +124,7 @@ class NepseScraper {
       await new Promise((resolve) => setTimeout(resolve, 3000));
       console.log("   ✓ Table updated to 100 entries");
 
-      console.log("✅ Table loaded. Scraping headers...");
+      console.log(" Table loaded. Scraping headers...");
       headers = await this.scrapeHeaders(page);
 
       if (headers.length > 0) {
@@ -154,14 +155,14 @@ class NepseScraper {
         await new Promise((resolve) => setTimeout(resolve, 500));
       }
 
-      console.log(`\n✅ Scraping complete! Total rows: ${allDataRows.length}`);
+      console.log(`\n Scraping complete! Total rows: ${allDataRows.length}`);
 
       const signals = this.convertToSignals(headers, allDataRows);
-      console.log(`✅ Converted to ${signals.length} trading signals`);
+      console.log(` Converted to ${signals.length} trading signals`);
 
       return signals;
     } catch (error) {
-      console.error("❌ Scraping error:", error);
+      console.error(" Scraping error:", error);
       throw error;
     } finally {
       await browser.close();
@@ -280,7 +281,7 @@ class NepseScraper {
       );
       return true;
     } catch (waitError) {
-      console.warn(`⚠️  Error waiting for page update: ${waitError}`);
+      console.warn(`  Error waiting for page update: ${waitError}`);
       return false;
     }
   }
@@ -400,6 +401,12 @@ async function main() {
     }
     console.log(` Successfully saved ${signals.length} signals to database`);
 
+    // Write scraped data to JSON file for GitHub Actions workflow
+    // Use process.cwd() for reliable path resolution in both local and CI environments
+    const outputPath = join(process.cwd(), "scraped_data.json");
+    await Bun.write(outputPath, JSON.stringify(signals, null, 2));
+    console.log(` Saved scraped data to ${outputPath}`);
+
     // Calculate statistics
     const sectors = new Set(signals.map((s) => s.sector));
     const summaries = new Set(signals.map((s) => s.technicalSummary));
@@ -419,7 +426,7 @@ async function main() {
     process.exit(0);
   } catch (error) {
     console.error("\n" + "=".repeat(60));
-    console.error("❌ SCRAPING FAILED");
+    console.error("SCRAPING FAILED");
     console.error("=".repeat(60));
     console.error("Error:", error);
     if (error instanceof Error) {
