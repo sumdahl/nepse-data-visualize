@@ -8,6 +8,11 @@
     "start": "next start",
     "lint": "next lint",
     "scrape": "bun run src/scripts/scrape.ts",
+    "pipeline": "bun run src/scripts/pipeline-run.ts",
+    "pipeline:run": "bun run src/scripts/pipeline-run.ts run",
+    "pipeline:status": "bun run src/scripts/pipeline-run.ts status",
+    "pipeline:backfill": "bun run src/scripts/pipeline-run.ts backfill",
+    "migrate:raw": "bun run src/scripts/migrate-raw.ts",
     "db:storage": "bun run src/scripts/storage-report.ts",
     "db:apply": "bun run src/scripts/apply-migration.ts",
     "db:generate": "drizzle-kit generate",
@@ -42,7 +47,8 @@
     "react-dom": "^19.2.0",
     "recharts": "^2.15.0",
     "tailwind-merge": "^2.5.4",
-    "tailwindcss-animate": "^1.0.7"
+    "tailwindcss-animate": "^1.0.7",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@types/bun": "latest",
