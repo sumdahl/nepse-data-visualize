@@ -1,25 +1,17 @@
 #!/usr/bin/env bun
 
-/**
- * Daily NEPSE Trading Signals Scraper
- *
- * This script:
- * 1. Scrapes trading signals from nepsealpha.com
- * 2. Transforms the data to our schema
- * 3. Stores it in Supabase database
- *
- * Run manually: bun run src/scripts/scrape.ts
- * Or via GitHub Actions: scheduled daily at 5 PM Nepal Time
- */
-
 import { connect } from "puppeteer-real-browser";
 import { Page, Browser } from "puppeteer-core";
 import { join } from "path";
 import { config } from "../config/index.js";
 import { transformRawData } from "../utils/transform.js";
-import { TradingSignal } from "../types/index.js";
+import { TradingSignal, RawSignal } from "../types/index.js";
 import { TradingSignalRepository } from "../db/repository.js";
 import { writeFile } from "node:fs/promises";
+import { writeRaw, createRawSignal } from "../pipeline/raw-writer.js";
+import { PipelineRunner } from "../pipeline/runner.js";
+
+const DATA_BASE_PATH = join(process.cwd(), 'data');
 
 class NepseScraper {
   private iTagTitleColumnIndices: number[] = [];
@@ -326,11 +318,6 @@ async function main() {
     console.log("=".repeat(60));
     console.log("");
 
-    // Check for database URL
-    if (!process.env.DATABASE_URL) {
-      throw new Error("DATABASE_URL environment variable is not set");
-    }
-
     // Initialize scraper and repository
     const scraper = new NepseScraper();
     const repository = new TradingSignalRepository();
@@ -349,68 +336,94 @@ async function main() {
       signal.scrapeDate = runDate;
     }
 
-    // Write scraped data to JSON file (for GitHub Actions workflow)
-    await writeFile('scraped_data.json', JSON.stringify(signals, null, 2), 'utf8');
-    console.log('   • Wrote scraped data to scraped_data.json');
+    // Convert to RawSignal format
+    const rawSignals: RawSignal[] = signals.map(s => ({
+      symbol: s.symbol,
+      technicalSummary: s.technicalSummary,
+      technicalEntryRisk: s.technicalEntryRisk,
+      sector: s.sector,
+      dailyGain: s.dailyGain,
+      ltp: s.ltp,
+      dailyVolatility: s.dailyVolatility,
+      priceRelative: s.priceRelative,
+      trend3M: s.trend3M,
+      rsi14: s.rsi14,
+      macdVsSignalLine: s.macdVsSignalLine,
+      percentB: s.percentB,
+      mfi14: s.mfi14,
+      sto14: s.sto14,
+      cci14: s.cci14,
+      stochRSI: s.stochRSI,
+      sma10: s.sma10,
+      priceAbove20SMA: s.priceAbove20SMA,
+      priceAbove50SMA: s.priceAbove50SMA,
+      priceAbove200SMA: s.priceAbove200SMA,
+      sma5Above20SMA: s.sma5Above20SMA,
+      sma50_200: s.sma50_200,
+      volumeTrend: s.volumeTrend,
+      beta3Month: s.beta3Month,
+      scrapedAt: s.scrapedAt?.toISOString() || runScrapedAt.toISOString(),
+      scrapeDate: s.scrapeDate || runDate,
+    }));
 
-    const scrapedAtValues = signals
-      .map((s) => s.scrapedAt)
-      .filter((d): d is Date => d instanceof Date);
-    if (scrapedAtValues.length > 0) {
-      const minScrapedAt = new Date(
-        Math.min(...scrapedAtValues.map((d) => d.getTime())),
-      );
-      const maxScrapedAt = new Date(
-        Math.max(...scrapedAtValues.map((d) => d.getTime())),
-      );
-      console.log(
-        `   • scrapedAt range: ${minScrapedAt.toISOString()} -> ${maxScrapedAt.toISOString()}`,
-      );
-    } else {
-      console.log("   • scrapedAt range: unavailable (no valid Date values)");
+    // Write to raw layer (immutable)
+    console.log("\nWriting to raw layer...");
+    const rawResult = await writeRaw(DATA_BASE_PATH, rawSignals, runDate, config.scraper.url);
+    console.log(`   ✓ Raw file: ${rawResult.path}`);
+    console.log(`   ✓ Records: ${rawResult.recordCount}`);
+
+    // Run pipeline to process raw data
+    console.log("\nRunning data pipeline...");
+    const pipelineRunner = new PipelineRunner(DATA_BASE_PATH);
+    const pipelineResult = await pipelineRunner.runFromRawRecords(rawSignals, { date: runDate });
+
+    if (pipelineResult.status === 'success') {
+      console.log(`   ✓ Cleaned: ${pipelineResult.records_cleaned} records`);
+      console.log(`   ✓ Featured: ${pipelineResult.records_featured} records`);
+    } else if (pipelineResult.status === 'error') {
+      console.warn(`   ⚠ Pipeline error: ${pipelineResult.error}`);
     }
 
-    // Save to database
-    console.log("\nSaving to database...");
-    const alreadyUpdatedToday =
-      await repository.hasSuccessfulRunForDate(runDate);
-    if (alreadyUpdatedToday) {
-      console.log(`Skipping DB update: already updated on ${runDate}`);
-      return;
-    }
+    // Save to database if configured
+    if (process.env.DATABASE_URL) {
+      console.log("\nSaving to database...");
+      const alreadyUpdatedToday = await repository.hasSuccessfulRunForDate(runDate);
+      if (alreadyUpdatedToday) {
+        console.log(`   Skipping DB update: already updated on ${runDate}`);
+      } else {
+        const scrapeRunId = await repository.createScrapeRun({
+          scrapedAt: runScrapedAt,
+          sourceUrl: config.scraper.url,
+          status: "started",
+        });
 
-    const scrapeRunId = await repository.createScrapeRun({
-      scrapedAt: runScrapedAt,
-      sourceUrl: config.scraper.url,
-      status: "started",
-    });
-
-    const runDurationMs = Date.now() - startTime;
-    try {
-      await repository.upsertSignals(signals, scrapeRunId);
-      await repository.finishScrapeRun({
-        id: scrapeRunId,
-        status: "success",
-        rowCount: signals.length,
-        durationMs: runDurationMs,
-      });
-    } catch (e) {
-      await repository.finishScrapeRun({
-        id: scrapeRunId,
-        status: "failed",
-        rowCount: 0,
-        durationMs: runDurationMs,
-        error: e instanceof Error ? e.message : String(e),
-      });
-      throw e;
+        const runDurationMs = Date.now() - startTime;
+        try {
+          await repository.upsertSignals(signals, scrapeRunId);
+          await repository.finishScrapeRun({
+            id: scrapeRunId,
+            status: "success",
+            rowCount: signals.length,
+            durationMs: runDurationMs,
+          });
+          console.log(`   ✓ Saved ${signals.length} signals to database`);
+        } catch (e) {
+          await repository.finishScrapeRun({
+            id: scrapeRunId,
+            status: "failed",
+            rowCount: 0,
+            durationMs: runDurationMs,
+            error: e instanceof Error ? e.message : String(e),
+          });
+          throw e;
+        }
+      }
     }
-    console.log(` Successfully saved ${signals.length} signals to database`);
 
     // Write scraped data to JSON file for GitHub Actions workflow
-    // Use process.cwd() for reliable path resolution in both local and CI environments
     const outputPath = join(process.cwd(), "scraped_data.json");
     await Bun.write(outputPath, JSON.stringify(signals, null, 2));
-    console.log(` Saved scraped data to ${outputPath}`);
+    console.log(`   ✓ Scraped data backup: ${outputPath}`);
 
     // Calculate statistics
     const sectors = new Set(signals.map((s) => s.sector));

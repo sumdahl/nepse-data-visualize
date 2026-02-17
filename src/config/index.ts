@@ -33,3 +33,5 @@ export const config = {
   }
 };
 
+export * from './pipeline.config';
+
