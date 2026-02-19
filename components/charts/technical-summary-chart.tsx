@@ -11,13 +11,15 @@ interface TechnicalSummaryChartProps {
   data: SummaryData[];
 }
 
-const COLORS = [
-  "hsl(142, 76%, 36%)", // Green for bullish
-  "hsl(142, 71%, 45%)",
-  "hsl(38, 92%, 50%)", // Yellow/Orange
-  "hsl(0, 84%, 60%)", // Red for bearish
-  "hsl(var(--muted))",
-];
+const COLOR_MAP: Record<string, string> = {
+  'Strong Bullish': "hsl(142, 76%, 36%)", // More green
+  'Bullish': "hsl(142, 60%, 55%)",        // Light green
+  'Neutral': "hsl(45, 93%, 47%)",        // Yellow
+  'Bearish': "hsl(0, 84%, 60%)",         // Red
+  'Strong Bearish': "hsl(0, 72%, 40%)",  // Dark Red
+};
+
+const DEFAULT_COLOR = "hsl(var(--muted))";
 
 export function TechnicalSummaryChart({ data }: TechnicalSummaryChartProps) {
   const chartData = data.map((item) => ({
@@ -39,7 +41,7 @@ export function TechnicalSummaryChart({ data }: TechnicalSummaryChartProps) {
           dataKey="value"
         >
           {chartData.map((entry, index) => (
-            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+            <Cell key={`cell-${index}`} fill={COLOR_MAP[entry.name] || DEFAULT_COLOR} />
           ))}
         </Pie>
         <Tooltip
