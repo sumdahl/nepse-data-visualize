@@ -59,7 +59,7 @@ export default async function HomePage() {
         )}
 
         <Tabs defaultValue="overview" className="space-y-4">
-          <TabsList>
+          <TabsList className="w-full overflow-x-auto justify-start">
             <TabsTrigger value="overview">Market Overview</TabsTrigger>
             <TabsTrigger value="sectors">Sectors</TabsTrigger>
             <TabsTrigger value="technical">Technical</TabsTrigger>

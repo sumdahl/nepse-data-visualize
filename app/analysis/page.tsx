@@ -46,7 +46,7 @@ export default async function AnalysisPage() {
     <div className="min-h-screen bg-background">
       <div className="border-b bg-card">
         <div className="container mx-auto px-4 py-6">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h1 className="text-3xl font-bold tracking-tight">Analysis Dashboard</h1>
               <p className="text-muted-foreground mt-1">
@@ -65,7 +65,7 @@ export default async function AnalysisPage() {
 
       <div className="container mx-auto px-4 py-8">
         <Tabs defaultValue="overview" className="space-y-4">
-          <TabsList>
+          <TabsList className="w-full overflow-x-auto justify-start">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="sectors">Sectors</TabsTrigger>
             <TabsTrigger value="technical">Technical</TabsTrigger>

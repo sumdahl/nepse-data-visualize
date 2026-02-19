@@ -67,7 +67,7 @@ export function WatchlistPanel({ onClose }: WatchlistPanelProps) {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="h-8 w-8 opacity-50 hover:opacity-100 transition-opacity"
                   onClick={() => removeFromWatchlist(item.symbol)}
                 >
                   <X className="h-4 w-4" />
