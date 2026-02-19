@@ -1,18 +1,35 @@
-import { Suspense } from "react";
-import { SignalsTable } from "@/components/signals-table";
-import { SignalsFilters } from "@/components/signals-filters";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { signalsService } from "@/services/signals-service";
+import { Suspense } from 'react';
+import { StockTable, StockFilters } from '@/components/stocks';
+import { DataCardSkeleton } from '@/components/shared/loading-skeleton';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { DataCard } from '@/components/shared/data-card';
+import { getFeaturedSignals, getSectorList } from '@/lib/services/data-service';
 
 export default async function SignalsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ sector?: string; search?: string }>;
+  searchParams: Promise<{ sector?: string; search?: string; rsiZone?: string; sentiment?: string; sortBy?: string }>;
 }) {
-  const { sector, search } = await searchParams;
-  const signals = await signalsService.getSignals({ sector, search });
-  const sectors = await signalsService.getSectorList();
-  const stats = await signalsService.getSignalStats(signals);
+  const params = await searchParams;
+  
+  const [signals, sectors] = await Promise.all([
+    getFeaturedSignals({
+      sector: params.sector,
+      symbol: params.search,
+      rsiZone: params.rsiZone,
+      limit: 500,
+    }),
+    getSectorList(),
+  ]);
+
+  const stats = {
+    total: signals.length,
+    uniqueSymbols: new Set(signals.map(s => s.symbol)).size,
+    uniqueSectors: new Set(signals.map(s => s.sector)).size,
+    avgMomentum: signals.length > 0
+      ? signals.reduce((sum, s) => sum + s.momentum_score, 0) / signals.length
+      : 0,
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -20,59 +37,48 @@ export default async function SignalsPage({
         <div className="container mx-auto px-4 py-6">
           <h1 className="text-3xl font-bold tracking-tight">Trading Signals</h1>
           <p className="text-muted-foreground mt-1">
-            Browse and analyze all NEPSE trading signals
+            Browse and analyze all NEPSE trading signals with momentum scores
           </p>
         </div>
       </div>
 
-      <div className="container mx-auto px-4 py-8">
-        {/* Filters */}
-        <Suspense fallback={<div>Loading filters...</div>}>
-          <SignalsFilters sectors={sectors} />
-        </Suspense>
-
-        {/* Stats */}
-        <div className="grid gap-4 md:grid-cols-4 mb-6">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Total Signals</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.total}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Unique Symbols</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.uniqueSymbols}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Sectors</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.uniqueSectors}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Latest Update</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-sm font-medium">
-                {stats.latestUpdate
-                  ? new Date(stats.latestUpdate).toLocaleString()
-                  : "N/A"}
-              </div>
-            </CardContent>
-          </Card>
+      <div className="container mx-auto px-4 py-8 space-y-6">
+        <div className="grid gap-4 md:grid-cols-4">
+          <DataCard title="Total Signals" value={stats.total} />
+          <DataCard title="Unique Symbols" value={stats.uniqueSymbols} />
+          <DataCard title="Sectors" value={stats.uniqueSectors} />
+          <DataCard
+            title="Avg Momentum"
+            value={stats.avgMomentum.toFixed(1)}
+            trend={stats.avgMomentum > 0 ? 'up' : stats.avgMomentum < 0 ? 'down' : 'neutral'}
+          />
         </div>
 
-        {/* Signals Table */}
-        <SignalsTable signals={signals} />
+        <Card>
+          <CardHeader>
+            <CardTitle>Filters</CardTitle>
+            <CardDescription>Filter signals by sector, RSI zone, and more</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Suspense fallback={<div>Loading filters...</div>}>
+              <StockFilters sectors={sectors} />
+            </Suspense>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Signals</CardTitle>
+            <CardDescription>
+              {signals.length} signals found
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Suspense fallback={<DataCardSkeleton />}>
+              <StockTable signals={signals} sortBy={params.sortBy || 'composite'} />
+            </Suspense>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

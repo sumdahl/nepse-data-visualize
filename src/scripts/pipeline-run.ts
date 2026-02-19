@@ -4,7 +4,7 @@ import { PipelineRunner, BackfillRunner } from '../pipeline/index.js';
 import { getHistoricalStats } from '../pipeline/historical.js';
 import { join } from 'node:path';
 
-const DATA_BASE_PATH = join(process.cwd(), 'data');
+const DATA_BASE_PATH = process.cwd();
 
 function printUsage() {
   console.log(`
