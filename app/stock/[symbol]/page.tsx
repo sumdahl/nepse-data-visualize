@@ -28,7 +28,7 @@ export default async function StockPage({
     <div className="min-h-screen bg-background">
       <div className="border-b bg-card">
         <div className="container mx-auto px-4 py-6">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-4">
               <Link href="/signals">
                 <Button variant="ghost" size="icon">
@@ -52,7 +52,7 @@ export default async function StockPage({
       </div>
 
       <div className="container mx-auto px-4 py-8 space-y-6">
-        <div className="grid gap-4 md:grid-cols-4">
+        <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium">Momentum</CardTitle>

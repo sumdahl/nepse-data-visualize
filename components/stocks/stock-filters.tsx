@@ -153,7 +153,7 @@ export function StockFilters({ sectors, onFilterChange }: StockFiltersProps) {
           <div className="space-y-2">
             <label className="text-sm font-medium">RSI Zone</label>
             <Select value={rsiZone} onValueChange={setRsiZone}>
-              <SelectTrigger className="w-[160px]">
+              <SelectTrigger className="w-full sm:w-[160px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -169,7 +169,7 @@ export function StockFilters({ sectors, onFilterChange }: StockFiltersProps) {
           <div className="space-y-2">
             <label className="text-sm font-medium">Sentiment</label>
             <Select value={sentiment} onValueChange={setSentiment}>
-              <SelectTrigger className="w-[160px]">
+              <SelectTrigger className="w-full sm:w-[160px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -185,7 +185,7 @@ export function StockFilters({ sectors, onFilterChange }: StockFiltersProps) {
           <div className="space-y-2">
             <label className="text-sm font-medium">Sort By</label>
             <Select value={sortBy} onValueChange={setSortBy}>
-              <SelectTrigger className="w-[160px]">
+              <SelectTrigger className="w-full sm:w-[160px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>

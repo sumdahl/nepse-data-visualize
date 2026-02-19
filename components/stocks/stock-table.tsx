@@ -52,18 +52,18 @@ export function StockTable({ signals, sortBy, onSort }: StockTableProps) {
   };
 
   return (
-    <div className="rounded-md border">
-      <Table>
+    <div className="rounded-md border overflow-x-auto">
+      <Table className="min-w-[800px]">
         <TableHeader>
           <TableRow>
-            <TableHead className="w-[60px]"></TableHead>
+            <TableHead className="w-[60px] hidden md:table-cell"></TableHead>
             <TableHead>
               <Button variant="ghost" size="sm" onClick={() => handleSort('symbol')}>
                 Symbol
                 <ArrowUpDown className="ml-2 h-4 w-4" />
               </Button>
             </TableHead>
-            <TableHead>Sector</TableHead>
+            <TableHead className="hidden md:table-cell">Sector</TableHead>
             <TableHead className="text-right">
               <Button variant="ghost" size="sm" onClick={() => handleSort('ltp')}>
                 LTP
@@ -76,22 +76,22 @@ export function StockTable({ signals, sortBy, onSort }: StockTableProps) {
                 <ArrowUpDown className="ml-2 h-4 w-4" />
               </Button>
             </TableHead>
-            <TableHead>Sentiment</TableHead>
+            <TableHead className="hidden lg:table-cell">Sentiment</TableHead>
             <TableHead>
               <Button variant="ghost" size="sm" onClick={() => handleSort('rsi_14')}>
                 RSI
                 <ArrowUpDown className="ml-2 h-4 w-4" />
               </Button>
             </TableHead>
-            <TableHead>Momentum</TableHead>
-            <TableHead>Composite</TableHead>
-            <TableHead className="text-right">Actions</TableHead>
+            <TableHead className="hidden lg:table-cell">Momentum</TableHead>
+            <TableHead className="hidden lg:table-cell">Composite</TableHead>
+            <TableHead className="text-right hidden md:table-cell">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {sortedSignals.map((signal, index) => (
             <TableRow key={`${signal.symbol}-${signal.scrape_date}-${index}`}>
-              <TableCell>
+              <TableCell className="hidden md:table-cell">
                 <WatchlistButton symbol={signal.symbol} />
               </TableCell>
               <TableCell className="font-bold">
@@ -99,14 +99,14 @@ export function StockTable({ signals, sortBy, onSort }: StockTableProps) {
                   {signal.symbol}
                 </Link>
               </TableCell>
-              <TableCell className="text-muted-foreground">{signal.sector}</TableCell>
+              <TableCell className="text-muted-foreground hidden md:table-cell">{signal.sector}</TableCell>
               <TableCell className="text-right font-medium">
                 Rs. {signal.ltp.toLocaleString()}
               </TableCell>
               <TableCell className="text-right">
                 <TrendBadge value={signal.daily_gain_pct} type="gain" />
               </TableCell>
-              <TableCell>
+              <TableCell className="hidden lg:table-cell">
                 <TrendBadge value={signal.technical_summary} type="sentiment" />
               </TableCell>
               <TableCell>
@@ -115,13 +115,13 @@ export function StockTable({ signals, sortBy, onSort }: StockTableProps) {
                   <ZoneBadge rsi={signal.rsi_14} />
                 </div>
               </TableCell>
-              <TableCell>
+              <TableCell className="hidden lg:table-cell">
                 <ScoreIndicator score={signal.momentum_score} showLabel={false} size="sm" />
               </TableCell>
-              <TableCell>
+              <TableCell className="hidden lg:table-cell">
                 <ScoreIndicator score={signal.signal_composite} showLabel={false} size="sm" />
               </TableCell>
-              <TableCell className="text-right">
+              <TableCell className="text-right hidden md:table-cell">
                 <Link href={`/stock/${signal.symbol}`}>
                   <Button variant="outline" size="sm">
                     <Eye className="h-4 w-4 mr-1" />

@@ -43,7 +43,7 @@ export default async function SignalsPage({
       </div>
 
       <div className="container mx-auto px-4 py-8 space-y-6">
-        <div className="grid gap-4 md:grid-cols-4">
+        <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
           <DataCard title="Total Signals" value={stats.total} />
           <DataCard title="Unique Symbols" value={stats.uniqueSymbols} />
           <DataCard title="Sectors" value={stats.uniqueSectors} />
