@@ -160,7 +160,7 @@ export class PipelineRunner {
     const stats = await getHistoricalStats(this.basePath);
     
     const allDates: string[] = [];
-    const rawDir = join(this.basePath, 'raw', 'nepse');
+    const rawDir = join(this.basePath, 'data', 'raw', 'nepse');
     
     try {
       const yearDirs = await findFiles(rawDir, /^\d{4}$/);

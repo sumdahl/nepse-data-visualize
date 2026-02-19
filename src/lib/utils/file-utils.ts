@@ -60,7 +60,7 @@ export async function findFiles(basePath: string, pattern: RegExp): Promise<stri
 
 export async function findFilesByDate(basePath: string, date: string): Promise<string[]> {
   const [year, month, day] = date.split('-');
-  const dirPath = join(basePath, 'raw', 'nepse', year, month, day);
+  const dirPath = join(basePath, 'data', 'raw', 'nepse', year, month, day);
   const results: string[] = [];
   
   try {
@@ -77,19 +77,19 @@ export async function findFilesByDate(basePath: string, date: string): Promise<s
 
 export function buildRawPath(basePath: string, date: string, time: string): string {
   const [year, month, day] = date.split('-');
-  return join(basePath, 'raw', 'nepse', year, month, day, `signals_${time}.json`);
+  return join(basePath, 'data', 'raw', 'nepse', year, month, day, `signals_${time}.json`);
 }
 
 export function buildCleanedPath(basePath: string, date: string): string {
   const [year, month] = date.split('-');
-  return join(basePath, 'cleaned', 'nepse', year, month, `cleaned_${date}.jsonl`);
+  return join(basePath, 'data', 'cleaned', 'nepse', year, month, `cleaned_${date}.jsonl`);
 }
 
 export function buildFeaturesPath(basePath: string, date: string): string {
   const [year, month] = date.split('-');
-  return join(basePath, 'features', 'nepse', year, month, `features_${date}.jsonl`);
+  return join(basePath, 'data', 'features', 'nepse', year, month, `features_${date}.jsonl`);
 }
 
 export function buildHistoricalPath(basePath: string): string {
-  return join(basePath, 'historical', 'nepse_timeseries.jsonl');
+  return join(basePath, 'data', 'historical', 'nepse_timeseries.jsonl');
 }
